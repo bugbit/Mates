@@ -1,0 +1,53 @@
+﻿@using SkiaSharp
+@using global::CSharpMath.SkiaSharp
+
+@if (!string.IsNullOrEmpty(_src))
+{
+    <img src="@_src" />
+}
+
+@code {
+    [Parameter] public bool Display { get; set; } = true;
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> OutputChanged { get; set; }
+
+    private string? _src;
+    private string? _lastLateX;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Detecta cambio del parámetro
+        if (Value != _lastLateX)
+        {
+            _lastLateX = Value;
+            await ProcessUrlAsync();
+            // No necesitas StateHasChanged(); Blazor re-renderiza tras el await
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    async Task ProcessUrlAsync()
+    {
+        var painter = new MathPainter { LaTeX = Value }; // or TextPainter
+
+        painter.TextColor = SKColors.White;
+
+        using var png = painter.DrawAsStream(format: SkiaSharp.SKEncodedImageFormat.Jpeg);
+
+        if (png is null)
+        {
+            _src = null;
+
+            return;
+        }
+
+        using var strean = new MemoryStream();
+
+        await png.CopyToAsync(strean);
+
+        _src = $"data:image/jpg;base64,{Convert.ToBase64String(strean.ToArray())}";
+
+        await OutputChanged.InvokeAsync(_src);
+    }
+}

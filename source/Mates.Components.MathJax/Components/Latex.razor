@@ -1,0 +1,47 @@
+﻿@inject IJSRuntime JsRuntime;
+@if (!string.IsNullOrWhiteSpace(Output))
+{
+    @((MarkupString)Output)
+}
+
+@code {
+    [Parameter] public bool Display { get; set; } = true;
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> OutputChanged { get; set; }
+
+    public string? Output { get; private set; }
+
+    private IJSObjectReference? module;
+    private bool hasRendered = false;
+
+    protected async override Task OnParametersSetAsync()
+    {
+        if (hasRendered)
+            await ProcessValueAsync();
+
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            module = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/Mates.Components.MathJax/mathjax.js");
+            await ProcessValueAsync();
+            hasRendered = true;
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task ProcessValueAsync()
+    {
+        var result = (module is not null && !string.IsNullOrWhiteSpace(Value)) ? await module.InvokeAsync<string>("processLatex", Value, Display) : "";
+
+        if (!string.Equals(Output, result))
+        {
+            Output = result;
+            await OutputChanged.InvokeAsync(result);
+            StateHasChanged();
+        }
+    }
+}
