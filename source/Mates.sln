@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.Components.MathJax", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.Components.CSharpMath", "Mates.Components.CSharpMath\Mates.Components.CSharpMath.csproj", "{8AFE181E-645F-44B8-A14E-36AAD144AD08}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.Math", "Mates.Math\Mates.Math.csproj", "{88517862-61E4-46D8-8096-A82C300C80B1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -40,6 +42,10 @@ Global
 		{8AFE181E-645F-44B8-A14E-36AAD144AD08}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8AFE181E-645F-44B8-A14E-36AAD144AD08}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8AFE181E-645F-44B8-A14E-36AAD144AD08}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88517862-61E4-46D8-8096-A82C300C80B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88517862-61E4-46D8-8096-A82C300C80B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88517862-61E4-46D8-8096-A82C300C80B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88517862-61E4-46D8-8096-A82C300C80B1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
