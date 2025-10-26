@@ -14,23 +14,23 @@
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+         <div class="nav-item px-3">
+            <NavLink class="nav-link" href="suma2numeros">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Suma 2 Numeros
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-
+        @{
+        #if DEBUG
+                }
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="mathexample">
                 <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Math Example
             </NavLink>
         </div>
+        @{
+        #endif
+        }
     </nav>
 </div>
 
