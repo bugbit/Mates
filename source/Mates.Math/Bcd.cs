@@ -1,6 +1,9 @@
 ﻿namespace Mates.Math;
 
+using System.Collections;
 using Math = System.Math;
+
+public enum BcdOperationFlags { None, NoNewResult, ReturnCarries }
 
 /// <summary>
 /// Representa un número codificado en formato BCD (Binary Coded Decimal).
@@ -87,18 +90,103 @@ public sealed class Bcd
     /// dentro del byte de datos y el resto (mitad baja o alta del byte).
     /// </summary>
     /// <param name="idxData">Índice del byte en el array de datos BCD.</param>
-    /// <param name="rem">Posición dentro del byte: 0 = nibble bajo, 1 = nibble alto.</param>
+    /// <param name="idx4Bit">Posición dentro del byte: 0 = nibble bajo, 1 = nibble alto.</param>
     /// <returns>Índice del dígito dentro del número completo.</returns>
-    public static int GetIndex(int idxData, int rem) => idxData * 2 + rem;
+    public static int GetIndex(int idxData, int idx4Bit) => idxData * 2 + idx4Bit;
 
     /// <summary>
     /// Calcula la cantidad total de dígitos representados hasta una posición determinada
     /// (incluyendo el dígito actual).
     /// </summary>
     /// <param name="idxData">Índice del byte en el array de datos BCD.</param>
-    /// <param name="rem">Posición dentro del byte: 0 = nibble bajo, 1 = nibble alto.</param>
+    /// <param name="idx4Bit">Posición dentro del byte: 0 = nibble bajo, 1 = nibble alto.</param>
     /// <returns>Total de dígitos contados hasta esa posición (1-based).</returns>
-    public static int CalcDigits(int idxData, int rem) => GetIndex(idxData, rem) + 1;
+    public static int CalcDigits(int idxData, int idx4Bit) => GetIndex(idxData, idx4Bit) + 1;
+
+    /// <summary>
+    /// Intenta calcular los índices internos correspondientes a un dígito BCD dentro de la estructura de datos.
+    /// </summary>
+    /// <param name="idx">
+    /// Índice del dígito a acceder.  
+    /// Puede ser positivo (desde el inicio) o negativo (desde el final).  
+    /// Por ejemplo, -1 se refiere al último dígito.
+    /// </param>
+    /// <param name="throwsException">
+    /// Indica si se debe lanzar una excepción <see cref="ArgumentOutOfRangeException"/> en caso de índice inválido.  
+    /// Si es <c>false</c>, devuelve <c>(false, 0, 0)</c> en su lugar.
+    /// </param>
+    /// <returns>
+    /// Una tupla con tres valores:
+    /// <list type="bullet">
+    /// <item><description><c>ok</c>: Indica si el índice es válido.</description></item>
+    /// <item><description><c>idxData</c>: Índice del byte dentro del array de datos BCD.</description></item>
+    /// <item><description><c>idx4Bit</c>: Índice del nibble (0 = bajo, 1 = alto) dentro del byte.</description></item>
+    /// </list>
+    /// </returns>
+    /// <remarks>
+    /// Cada byte almacena dos dígitos BCD:
+    /// <code>
+    ///    Índices de dígitos:  0     1     2     3     4     5 ...
+    ///    Posición interna:   (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) ...
+    /// </code>
+    /// De modo que:
+    /// - El primer valor de la tupla (<c>idxData</c>) indica el byte.  
+    /// - El segundo (<c>idx4Bit</c>) indica si se trata del nibble bajo (0) o alto (1).
+    /// </remarks>
+    private (bool ok, int idxData, int idx4Bit) TryGetIdx(int idx, bool throwsException)
+    {
+        /*
+         *    0     1     2     3     4     5     6     7     8     9
+         *  (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) (3,0) (3,1) (4,0) (4,1)
+         *   -10    -9    -8    -7    -6    -5    -4    -3    -2    -1
+         *  (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) (3,0) (3,1) (4,0) (4,1)
+         */
+
+        if (idx < 0)
+            idx = _digits + idx;
+
+        if (idx < 0)
+        {
+            if (throwsException)
+                throw new ArgumentOutOfRangeException(nameof(idx));
+            else
+                return (false, 0, 0);
+        }
+
+        var (idxData, idx4Bit) = Math.DivRem(Math.Abs(idx), 2);
+
+        return (true, idxData, idx4Bit);
+    }
+
+    /// <summary>
+    /// Intenta calcular los índices internos correspondientes a un dígito BCD,
+    /// sin lanzar excepciones en caso de error.
+    /// </summary>
+    /// <param name="idx">
+    /// Índice del dígito a acceder. Puede ser negativo para contar desde el final.
+    /// </param>
+    /// <returns>
+    /// Tupla con la información de índice:  
+    /// <c>(ok, idxData, idx4Bit)</c>, donde <c>ok</c> indica si el índice era válido.
+    /// </returns>
+    /// <remarks>
+    /// Este método permite convertir un índice de dígito (por ejemplo, el 5.º dígito) en su
+    /// posición real dentro de la lista de bytes que componen el número BCD.
+    ///
+    /// Cada byte almacena dos dígitos:
+    /// <code>
+    ///  índice:   0     1     2     3     4     5     6     7     8     9
+    ///  posición: (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) (3,0) (3,1) (4,0) (4,1)
+    /// </code>
+    /// Donde la primera coordenada es el byte (<c>idxData</c>) y la segunda el nibble (<c>idx4Bit</c>).
+    ///
+    /// Los índices negativos se interpretan desde el final del número:
+    /// <code>
+    ///  índice:   -10   -9    -8    -7    -6    -5    -4    -3    -2    -1
+    ///  posición: (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) (3,0) (3,1) (4,0) (4,1)
+    /// </code>
+    /// </remarks>
+    public (bool ok, int idxData, int idx4Bit) TryGetIdx(int idx) => TryGetIdx(idx, false);
 
     /// <summary>
     /// Calcula la posición del dígito dentro del almacenamiento interno BCD,
@@ -137,22 +225,9 @@ public sealed class Bcd
     /// </remarks>
     public (int idxData, int idx4Bit) GetIdx(int idx)
     {
-        /*
-         *    0     1     2     3     4     5     6     7     8     9
-         *  (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) (3,0) (3,1) (4,0) (4,1)
-         *   -10    -9    -8    -7    -6    -5    -4    -3    -2    -1
-         *  (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) (3,0) (3,1) (4,0) (4,1)
-         */
+        var (_, idxData, idx4Bit) = TryGetIdx(idx, true);
 
-        if (idx < 0)
-            idx = _digits + idx;
-
-        if (idx < 0)
-            throw new ArgumentOutOfRangeException(nameof(idx));
-
-        var (idxData, idxRem) = Math.DivRem(Math.Abs(idx), 2);
-
-        return (idxData, idxRem);
+        return (idxData, idx4Bit);
     }
 
     /// <summary>
@@ -177,22 +252,30 @@ public sealed class Bcd
         if (digit < 0 || digit > 9)
             throw new ArgumentOutOfRangeException(nameof(digit));
 
-        var (idxData, idxRem) = GetIdx(idx);
+        var (idxData, idx4Bit) = GetIdx(idx);
 
         var digitData = idxData < _data.Count ? _data[idxData] : 0;
-        var digitDataNew = digit << (idxRem * 4);
-        var msk = (byte)(7 << (idxRem * 4));
+        var digitDataNew = digit << (idx4Bit * 4);
+        var msk = (byte)(7 << (idx4Bit * 4));
 
         if (idxData < _data.Count)
         {
             _data[idxData] = (byte)((digitData & ~msk) | digitDataNew);
-            if (idxData == _data.Count - 1 && idxRem != 0)
-                _digits = CalcDigits(idxData, idxRem);
+            if (idxData == _data.Count - 1 && idx4Bit != 0)
+                _digits = CalcDigits(idxData, idx4Bit);
         }
         else
         {
-            SetDigits(CalcDigits(idxData, idxRem));
+            SetDigits(CalcDigits(idxData, idx4Bit));
             _data[idxData] = (byte)digitDataNew;
         }
+    }
+
+    public (Bcd? result, BitArray? carries) Sum(Bcd n1, Bcd n2, BcdOperationFlags flags = BcdOperationFlags.None)
+    {
+        Bcd? result = null;
+        BitArray? carries = null;
+
+        return (result, carries);
     }
 }
