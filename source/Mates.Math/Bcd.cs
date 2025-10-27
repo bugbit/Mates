@@ -66,7 +66,12 @@ public sealed class Bcd
     /// </param>
     public Bcd(IEnumerable<byte> data, int? digits = null)
     {
+        // Crea una nueva lista a partir de la secuencia de bytes recibida.
+        // Esto copia el contenido, evitando dependencias con el enumerable original.
         _data = new(data);
+
+        // Si se especificó la cantidad de dígitos, ajusta la estructura interna
+        // para asegurar que la longitud en bytes coincide con el número de dígitos esperado.
         if (digits.HasValue)
             SetDigits(digits.Value);
     }
@@ -237,18 +242,51 @@ public sealed class Bcd
         }
     }
 
+    /// <summary>
+    /// Obtiene el valor decimal de un dígito almacenado en formato BCD (Binary Coded Decimal)
+    /// en la posición indicada.
+    /// </summary>
+    /// <param name="idx">
+    /// Índice del dígito a leer.  
+    /// Puede ser positivo (desde el inicio) o negativo (desde el final).  
+    /// Por ejemplo, <c>-1</c> obtiene el último dígito.
+    /// </param>
+    /// <returns>
+    /// El valor del dígito (0–9) en la posición solicitada.  
+    /// Si el índice no es válido o excede la cantidad de datos disponibles, devuelve <c>0</c>.
+    /// </returns>
+    /// <remarks>
+    /// Cada byte de <see cref="_data"/> contiene dos dígitos codificados en BCD:  
+    /// - El nibble bajo (bits 0–3) representa el dígito par.  
+    /// - El nibble alto (bits 4–7) representa el dígito impar.
+    ///
+    /// Ejemplo de almacenamiento:
+    /// <code>
+    ///   _data[0] = 0x12  → dígitos [2, 1]
+    ///   _data[1] = 0x34  → dígitos [4, 3]
+    /// </code>
+    /// </remarks>
     public int GetDigit(int idx)
     {
+        // Intenta obtener la posición interna (byte y nibble)
+        // correspondiente al índice solicitado.
         var (ok, idxData, idx4Bit) = TryGetIdx(idx);
 
+        // Si el índice no es válido (fuera de rango negativo, etc.),
+        // devuelve 0 por defecto.
         if (!ok)
             return 0;
 
+        // Si el byte calculado está fuera del tamaño de la lista de datos,
+        // también se devuelve 0 como valor por defecto.
         if (idxData >= _data.Count)
             return 0;
 
+        // Desplaza el byte para colocar el nibble deseado (0 o 1)
+        // en los bits menos significativos.
         var digitData = _data[idxData] >> (idx4Bit * 4);
 
+        // Aplica una máscara (0x0F) para aislar los 4 bits del dígito.
         return digitData & 0x0F;
     }
 
@@ -293,8 +331,6 @@ public sealed class Bcd
     private (bool ok, int idxData, int idx4Bit) TryGetIdx(int idx, bool throwsException)
     {
         bool ok;
-        int idxData;
-        int idx4Bit;
 
         /*
          *    0     1     2     3     4     5     6     7     8     9
@@ -303,9 +339,11 @@ public sealed class Bcd
          *  (0,1) (0,0) (1,1) (1,0) (2,1) (2,0) (3,1) (3,0) (4,1) (4,0)
          */
 
+        // Si el índice es negativo, se cuenta desde el final.
         if (idx < 0)
             idx = _digits + idx;
 
+        // Si después del ajuste sigue siendo negativo, el índice no es válido.
         if (idx < 0 || idx >= _digits)
         {
             if (throwsException)
@@ -316,7 +354,8 @@ public sealed class Bcd
         else
             ok = true;
 
-        (idxData, idx4Bit) = Math.DivRem(Math.Abs(idx), 2);
+        // Divide el índice entre 2: cada byte tiene 2 dígitos (nibbles).
+        var (idxData, idx4Bit) = Math.DivRem(Math.Abs(idx), 2);
 
         return (ok, idxData, 1 - idx4Bit);
     }
