@@ -129,7 +129,7 @@ public sealed class Bcd
         if (_digits < digits)
             _digits = digits;
 
-         // Si faltan bytes en la lista, se agregan y se inicializan a cero.
+        // Si faltan bytes en la lista, se agregan y se inicializan a cero.
         if (lengthNew2 > 0)
             _data.AddRange(Enumerable.Repeat((byte)0, lengthNew2).ToList());
     }
@@ -347,6 +347,18 @@ public sealed class Bcd
     {
         Bcd? result = null;
         BitArray? carries = null;
+        int count = Math.Min(n1.Digits, n2.Digits);
+
+        /*
+         * 123+456789 = 456912 => 219654
+         * 3+9 = 12 digit=2 carry = 1 [ 0x0200 ]
+         * 2+9 + 1 = 11  digit=1 carry = 1 [ 0x0201 ]
+         * 1+7 + 1 = 9 digit=9 carry = 1 [ 0x0201, 0x0900 ]
+         * 0+6 = 6 digit=6 carry = 0 [ 0x0201, 0x0906 ]
+         * 0+5 = 5 digit=5 carry = 0 [ 0x0201, 0x0906, 0x0500 ]
+         * 0+4 = 4 digit=4 carry = 0 [ 0x0201, 0x0906, 0x0504 ]          
+         */
+        //List<byte>
 
         return (result, carries);
     }
