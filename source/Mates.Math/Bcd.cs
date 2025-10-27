@@ -52,6 +52,26 @@ public sealed class Bcd
     }
 
     /// <summary>
+    /// Constructor de la clase <c>Bcd</c> que inicializa los datos binarios decimales (BCD)
+    /// a partir de una secuencia de bytes opcionalmente acompañada por el número total de dígitos.
+    /// </summary>
+    /// <param name="data">
+    /// Colección de bytes que representan los valores BCD.
+    /// Cada byte contiene dos dígitos codificados en nibbles (4 bits cada uno).
+    /// </param>
+    /// <param name="digits">
+    /// Número total de dígitos decimales que debe manejar la instancia.  
+    /// Si se proporciona, se ajusta internamente mediante <see cref="SetDigits(int)"/>;  
+    /// si es <c>null</c>, el número de dígitos se deriva del tamaño de los datos.
+    /// </param>
+    public Bcd(IEnumerable<byte> data, int? digits = null)
+    {
+        _data = new(data);
+        if (digits.HasValue)
+            SetDigits(digits.Value);
+    }
+
+    /// <summary>
     /// Obtiene el número total de dígitos decimales definidos para esta instancia de <see cref="Bcd"/>.
     /// </summary>
     /// <remarks>
@@ -76,13 +96,14 @@ public sealed class Bcd
     /// <param name="digits">Número total de dígitos a establecer.</param>
     public void SetDigits(int digits)
     {
-        int lenghtNew = (digits / 2) + 1;
+        var (div, rem) = Math.DivRem(digits, 2);
+        int lenghtNew = div + rem;
         int lengthNew2 = lenghtNew - _data.Count;
 
         if (_digits < digits)
             _digits = digits;
         if (lengthNew2 > 0)
-            _data = Enumerable.Repeat((byte)0, lengthNew2).ToList();
+            _data.AddRange(Enumerable.Repeat((byte)0, lengthNew2).ToList());
     }
 
     /// <summary>
@@ -102,61 +123,6 @@ public sealed class Bcd
     /// <param name="idx4Bit">Posición dentro del byte: 0 = nibble bajo, 1 = nibble alto.</param>
     /// <returns>Total de dígitos contados hasta esa posición (1-based).</returns>
     public static int CalcDigits(int idxData, int idx4Bit) => GetIndex(idxData, idx4Bit) + 1;
-
-    /// <summary>
-    /// Intenta calcular los índices internos correspondientes a un dígito BCD dentro de la estructura de datos.
-    /// </summary>
-    /// <param name="idx">
-    /// Índice del dígito a acceder.  
-    /// Puede ser positivo (desde el inicio) o negativo (desde el final).  
-    /// Por ejemplo, -1 se refiere al último dígito.
-    /// </param>
-    /// <param name="throwsException">
-    /// Indica si se debe lanzar una excepción <see cref="ArgumentOutOfRangeException"/> en caso de índice inválido.  
-    /// Si es <c>false</c>, devuelve <c>(false, 0, 0)</c> en su lugar.
-    /// </param>
-    /// <returns>
-    /// Una tupla con tres valores:
-    /// <list type="bullet">
-    /// <item><description><c>ok</c>: Indica si el índice es válido.</description></item>
-    /// <item><description><c>idxData</c>: Índice del byte dentro del array de datos BCD.</description></item>
-    /// <item><description><c>idx4Bit</c>: Índice del nibble (0 = bajo, 1 = alto) dentro del byte.</description></item>
-    /// </list>
-    /// </returns>
-    /// <remarks>
-    /// Cada byte almacena dos dígitos BCD:
-    /// <code>
-    ///    Índices de dígitos:  0     1     2     3     4     5 ...
-    ///    Posición interna:   (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) ...
-    /// </code>
-    /// De modo que:
-    /// - El primer valor de la tupla (<c>idxData</c>) indica el byte.  
-    /// - El segundo (<c>idx4Bit</c>) indica si se trata del nibble bajo (0) o alto (1).
-    /// </remarks>
-    private (bool ok, int idxData, int idx4Bit) TryGetIdx(int idx, bool throwsException)
-    {
-        /*
-         *    0     1     2     3     4     5     6     7     8     9
-         *  (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) (3,0) (3,1) (4,0) (4,1)
-         *   -10    -9    -8    -7    -6    -5    -4    -3    -2    -1
-         *  (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) (3,0) (3,1) (4,0) (4,1)
-         */
-
-        if (idx < 0)
-            idx = _digits + idx;
-
-        if (idx < 0)
-        {
-            if (throwsException)
-                throw new ArgumentOutOfRangeException(nameof(idx));
-            else
-                return (false, 0, 0);
-        }
-
-        var (idxData, idx4Bit) = Math.DivRem(Math.Abs(idx), 2);
-
-        return (true, idxData, idx4Bit);
-    }
 
     /// <summary>
     /// Intenta calcular los índices internos correspondientes a un dígito BCD,
@@ -271,11 +237,81 @@ public sealed class Bcd
         }
     }
 
+    public int GetDigit(int idx)
+    {
+        var (ok, idxData, idx4Bit) = TryGetIdx(idx);
+
+        if (!ok)
+            return 0;
+
+        if (idxData >= _data.Count)
+            return 0;
+
+        var digitData = _data[idxData] >> (idx4Bit * 4);
+
+        return digitData & 0x0F;
+    }
+
     public (Bcd? result, BitArray? carries) Sum(Bcd n1, Bcd n2, BcdOperationFlags flags = BcdOperationFlags.None)
     {
         Bcd? result = null;
         BitArray? carries = null;
 
         return (result, carries);
+    }
+
+    /// <summary>
+    /// Intenta calcular los índices internos correspondientes a un dígito BCD dentro de la estructura de datos.
+    /// </summary>
+    /// <param name="idx">
+    /// Índice del dígito a acceder.  
+    /// Puede ser positivo (desde el inicio) o negativo (desde el final).  
+    /// Por ejemplo, -1 se refiere al último dígito.
+    /// </param>
+    /// <param name="throwsException">
+    /// Indica si se debe lanzar una excepción <see cref="ArgumentOutOfRangeException"/> en caso de índice inválido.  
+    /// Si es <c>false</c>, devuelve <c>(false, 0, 0)</c> en su lugar.
+    /// </param>
+    /// <returns>
+    /// Una tupla con tres valores:
+    /// <list type="bullet">
+    /// <item><description><c>ok</c>: Indica si el índice es válido.</description></item>
+    /// <item><description><c>idxData</c>: Índice del byte dentro del array de datos BCD.</description></item>
+    /// <item><description><c>idx4Bit</c>: Índice del nibble (0 = bajo, 1 = alto) dentro del byte.</description></item>
+    /// </list>
+    /// </returns>
+    /// <remarks>
+    /// Cada byte almacena dos dígitos BCD:
+    /// <code>
+    ///    Índices de dígitos:  0     1     2     3     4     5 ...
+    ///    Posición interna:   (0,0) (0,1) (1,0) (1,1) (2,0) (2,1) ...
+    /// </code>
+    /// De modo que:
+    /// - El primer valor de la tupla (<c>idxData</c>) indica el byte.  
+    /// - El segundo (<c>idx4Bit</c>) indica si se trata del nibble bajo (0) o alto (1).
+    /// </remarks>
+    private (bool ok, int idxData, int idx4Bit) TryGetIdx(int idx, bool throwsException)
+    {
+        /*
+         *    0     1     2     3     4     5     6     7     8     9
+         *  (0,1) (0,0) (1,1) (1,0) (2,1) (2,0) (3,1) (3,0) (4,1) (4,0)
+         *   -10    -9    -8    -7    -6    -5    -4    -3    -2    -1
+         *  (0,1) (0,0) (1,1) (1,0) (2,1) (2,0) (3,1) (3,0) (4,1) (4,0)
+         */
+
+        if (idx < 0)
+            idx = _digits + idx;
+
+        if (idx < 0)
+        {
+            if (throwsException)
+                throw new ArgumentOutOfRangeException(nameof(idx));
+            else
+                return (false, 0, 0);
+        }
+
+        var (idxData, idx4Bit) = Math.DivRem(Math.Abs(idx), 2);
+
+        return (true, idxData, 1 - idx4Bit);
     }
 }

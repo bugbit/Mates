@@ -17,12 +17,12 @@ public class BcdTests
     }
 
     [Theory]
-    [InlineData(0, 0, 0)]
-    [InlineData(1, 0, 1)]
-    [InlineData(2, 1, 0)]
-    [InlineData(3, 1, 1)]
-    [InlineData(-1, 0, 1)] // negativo
-    [InlineData(-2, 0, 0)] // negativo par
+    [InlineData(0, 0, 1)]
+    [InlineData(1, 0, 0)]
+    [InlineData(2, 1, 1)]
+    [InlineData(3, 1, 0)]
+    [InlineData(-1, 0, 0)] // negativo
+    [InlineData(-2, 0, 1)] // negativo par
     public void GetIdx_DeberiaCalcularCorrectamente(int idx, int esperadoIdxData, int esperadoIdx4Bit)
     {
         var bcd = new Bcd();
@@ -54,7 +54,8 @@ public class BcdTests
 
         var (idxData, idxRem) = Math.DivRem(Math.Abs(idx), 2);
         var valorGuardado = data[idxData];
-        var nibble = (valorGuardado >> (idxRem * 4)) & 0xF;
+        var nibble = (valorGuardado >> ((1 - idxRem) * 4)) & 0xF;
+
         nibble.Should().Be(digit);
     }
 
@@ -92,6 +93,47 @@ public class BcdTests
 
         var data2 = bcd.Data;
         data2[0].Should().NotBe(0xFF); // original no debe cambiar
+    }
+
+    [Fact]
+    public void GetDigit_ReturnsCorrectDigits()
+    {
+        // Arrange
+        // Numero 1234
+        var data = new List<byte> { 0x12, 0x34 };
+        var bcd = new Bcd(data, digits: 4);
+
+        // Act & Assert
+        Assert.Equal(1, bcd.GetDigit(0)); // nibble bajo del primer byte
+        Assert.Equal(2, bcd.GetDigit(1)); // nibble alto del primer byte
+        Assert.Equal(3, bcd.GetDigit(2)); // nibble bajo del segundo byte
+        Assert.Equal(4, bcd.GetDigit(3)); // nibble alto del segundo byte
+    }
+
+    [Fact]
+    public void GetDigit_SupportsNegativeIndices()
+    {
+        // Arrange
+        var data = new List<byte> { 0x12, 0x34 };
+        var bcd = new Bcd(data, digits: 4);
+
+        // Act & Assert
+        Assert.Equal(4, bcd.GetDigit(-1)); // último dígito
+        Assert.Equal(3, bcd.GetDigit(-2));
+        Assert.Equal(2, bcd.GetDigit(-3));
+        Assert.Equal(1, bcd.GetDigit(-4));
+    }
+
+    [Fact]
+    public void GetDigit_Return0WhenIndexOutOfRange()
+    {
+        // Arrange
+        var data = new List<byte> { 0x12 };
+        var bcd = new Bcd(data, digits: 2);
+
+        // Act & Assert
+        Assert.Equal(0, bcd.GetDigit(5));
+        Assert.Equal(0, bcd.GetDigit(-3));
     }
 }
 
