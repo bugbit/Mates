@@ -14,7 +14,7 @@ using Math = System.Math;
 /// donde cada nibble representa un dígito decimal.
 /// </para>
 /// </remarks>
-public class Bcd
+public sealed class Bcd
 {
     /// <summary>
     /// Almacena los bytes que representan los dígitos en formato BCD.
@@ -45,8 +45,7 @@ public class Bcd
     /// </remarks>
     public Bcd(int digits)
     {
-        _data = new List<byte>((digits / 2) + 1);
-        _digits = digits;
+        SetDigits(digits);
     }
 
     /// <summary>
@@ -65,6 +64,41 @@ public class Bcd
     /// El array devuelto es una copia: modificarlo no afecta al contenido interno del objeto.
     /// </remarks>
     public byte[] Data => _data.ToArray();
+
+    /// <summary>
+    /// Ajusta el número total de dígitos que debe manejar la estructura interna BCD.
+    /// Si el nuevo número de dígitos requiere más espacio de datos (bytes),
+    /// amplía la lista interna con ceros.
+    /// </summary>
+    /// <param name="digits">Número total de dígitos a establecer.</param>
+    public void SetDigits(int digits)
+    {
+        int lenghtNew = (digits / 2) + 1;
+        int lengthNew2 = lenghtNew - _data.Count;
+
+        if (_digits < digits)
+            _digits = digits;
+        if (lengthNew2 > 0)
+            _data = Enumerable.Repeat((byte)0, lengthNew2).ToList();
+    }
+
+    /// <summary>
+    /// Calcula el índice absoluto de un dígito BCD a partir de su posición
+    /// dentro del byte de datos y el resto (mitad baja o alta del byte).
+    /// </summary>
+    /// <param name="idxData">Índice del byte en el array de datos BCD.</param>
+    /// <param name="rem">Posición dentro del byte: 0 = nibble bajo, 1 = nibble alto.</param>
+    /// <returns>Índice del dígito dentro del número completo.</returns>
+    public static int GetIndex(int idxData, int rem) => idxData * 2 + rem;
+
+    /// <summary>
+    /// Calcula la cantidad total de dígitos representados hasta una posición determinada
+    /// (incluyendo el dígito actual).
+    /// </summary>
+    /// <param name="idxData">Índice del byte en el array de datos BCD.</param>
+    /// <param name="rem">Posición dentro del byte: 0 = nibble bajo, 1 = nibble alto.</param>
+    /// <returns>Total de dígitos contados hasta esa posición (1-based).</returns>
+    public static int CalcDigits(int idxData, int rem) => GetIndex(idxData, rem) + 1;
 
     /// <summary>
     /// Calcula la posición del dígito dentro del almacenamiento interno BCD,
@@ -111,7 +145,7 @@ public class Bcd
          */
 
         if (idx < 0)
-            idx = _data.Count + idx;
+            idx = _digits + idx;
 
         if (idx < 0)
             throw new ArgumentOutOfRangeException(nameof(idx));
@@ -143,15 +177,22 @@ public class Bcd
         if (digit < 0 || digit > 9)
             throw new ArgumentOutOfRangeException(nameof(digit));
 
-        var (idxData, idxRem) = Math.DivRem(idx, 2);
+        var (idxData, idxRem) = GetIdx(idx);
 
         var digitData = idxData < _data.Count ? _data[idxData] : 0;
         var digitDataNew = digit << (idxRem * 4);
         var msk = (byte)(7 << (idxRem * 4));
 
         if (idxData < _data.Count)
+        {
             _data[idxData] = (byte)((digitData & ~msk) | digitDataNew);
+            if (idxData == _data.Count - 1 && idxRem != 0)
+                _digits = CalcDigits(idxData, idxRem);
+        }
         else
-            _data.Add((byte)digitDataNew);
+        {
+            SetDigits(CalcDigits(idxData, idxRem));
+            _data[idxData] = (byte)digitDataNew;
+        }
     }
 }

@@ -25,10 +25,11 @@ public class BcdTests
     [InlineData(-2, 0, 0)] // negativo par
     public void GetIdx_DeberiaCalcularCorrectamente(int idx, int esperadoIdxData, int esperadoIdx4Bit)
     {
-        var bcd = idx >= 0 ? new Bcd() : new Bcd((System.Math.Abs(idx) + esperadoIdxData) / 2 + 1);
+        var bcd = new Bcd();
 
         // Prepara data para el caso de negativos
-        bcd.SetDigit(idx, 1);
+        bcd.SetDigit(0, 1);
+        bcd.SetDigit(1, 1);
 
         var (idxData, idx4Bit) = bcd.GetIdx(idx);
 
@@ -62,10 +63,10 @@ public class BcdTests
     {
         var bcd = new Bcd();
         bcd.SetDigit(0, 3);
-        bcd.Data.Length.Should().Be(2);
+        bcd.Data.Length.Should().Be(1);
 
         bcd.SetDigit(1, 8);
-        bcd.Data.Length.Should().Be(4); // mismo byte
+        bcd.Data.Length.Should().Be(1); // mismo byte
     }
 
     [Theory]
