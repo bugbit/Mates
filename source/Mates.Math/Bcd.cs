@@ -218,7 +218,7 @@ public sealed class Bcd
         if (digit < 0 || digit > 9)
             throw new ArgumentOutOfRangeException(nameof(digit));
 
-        var (idxData, idx4Bit) = GetIdx(idx);
+        var (_, idxData, idx4Bit) = TryGetIdx(idx);
 
         var digitData = idxData < _data.Count ? _data[idxData] : 0;
         var digitDataNew = digit << (idx4Bit * 4);
@@ -292,6 +292,10 @@ public sealed class Bcd
     /// </remarks>
     private (bool ok, int idxData, int idx4Bit) TryGetIdx(int idx, bool throwsException)
     {
+        bool ok;
+        int idxData;
+        int idx4Bit;
+
         /*
          *    0     1     2     3     4     5     6     7     8     9
          *  (0,1) (0,0) (1,1) (1,0) (2,1) (2,0) (3,1) (3,0) (4,1) (4,0)
@@ -302,16 +306,18 @@ public sealed class Bcd
         if (idx < 0)
             idx = _digits + idx;
 
-        if (idx < 0)
+        if (idx < 0 || idx >= _digits)
         {
             if (throwsException)
                 throw new ArgumentOutOfRangeException(nameof(idx));
-            else
-                return (false, 0, 0);
+
+            ok = false;
         }
+        else
+            ok = true;
 
-        var (idxData, idx4Bit) = Math.DivRem(Math.Abs(idx), 2);
+        (idxData, idx4Bit) = Math.DivRem(Math.Abs(idx), 2);
 
-        return (true, idxData, 1 - idx4Bit);
+        return (ok, idxData, 1 - idx4Bit);
     }
 }

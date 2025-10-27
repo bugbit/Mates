@@ -21,17 +21,19 @@ public class BcdTests
     [InlineData(1, 0, 0)]
     [InlineData(2, 1, 1)]
     [InlineData(3, 1, 0)]
-    [InlineData(-1, 0, 0)] // negativo
-    [InlineData(-2, 0, 1)] // negativo par
+    [InlineData(-1, 1, 0)] // negativo
+    [InlineData(-2, 1, 1)] // negativo par
     public void GetIdx_DeberiaCalcularCorrectamente(int idx, int esperadoIdxData, int esperadoIdx4Bit)
     {
         var bcd = new Bcd();
 
         // Prepara data para el caso de negativos
         bcd.SetDigit(0, 1);
-        bcd.SetDigit(1, 1);
+        bcd.SetDigit(1, 2);
+        bcd.SetDigit(2, 3);
+        bcd.SetDigit(3, 4);
 
-        var (idxData, idx4Bit) = bcd.GetIdx(idx);
+        var (_, idxData, idx4Bit) = bcd.TryGetIdx(idx);
 
         idxData.Should().Be(esperadoIdxData);
         idx4Bit.Should().Be(esperadoIdx4Bit);
