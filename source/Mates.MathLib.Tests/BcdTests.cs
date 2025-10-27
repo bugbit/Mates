@@ -1,8 +1,8 @@
-﻿namespace Mates.Math.Tests;
+﻿namespace Mates.MathLib.Tests;
 
 using System;
 using System.Linq;
-using Mates.Math;
+using Mates.MathLib;
 using Xunit;
 using FluentAssertions;
 

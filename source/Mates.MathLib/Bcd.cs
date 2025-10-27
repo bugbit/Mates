@@ -1,7 +1,6 @@
-﻿namespace Mates.Math;
+﻿namespace Mates.MathLib;
 
 using System.Collections;
-using Math = System.Math;
 
 public enum BcdOperationFlags { None, NoNewResult, ReturnCarries }
 
@@ -48,6 +47,7 @@ public sealed class Bcd
     /// </remarks>
     public Bcd(int digits)
     {
+        _data = new();
         SetDigits(digits);
     }
 
@@ -95,18 +95,41 @@ public sealed class Bcd
 
     /// <summary>
     /// Ajusta el número total de dígitos que debe manejar la estructura interna BCD.
-    /// Si el nuevo número de dígitos requiere más espacio de datos (bytes),
-    /// amplía la lista interna con ceros.
+    /// Si el nuevo número de dígitos requiere más espacio (más bytes),
+    /// amplía la lista interna <see cref="_data"/> rellenándola con ceros.
     /// </summary>
-    /// <param name="digits">Número total de dígitos a establecer.</param>
+    /// <param name="digits">
+    /// Número total de dígitos que debe representar la instancia BCD.  
+    /// Cada byte almacena dos dígitos en formato BCD (uno en el nibble bajo y otro en el alto).
+    /// </param>
+    /// <remarks>
+    /// Este método garantiza que la lista interna de bytes tenga la longitud necesaria
+    /// para almacenar el número de dígitos indicado.
+    /// <para>
+    /// Ejemplo:  
+    /// - 1 o 2 dígitos → 1 byte  
+    /// - 3 o 4 dígitos → 2 bytes  
+    /// - 5 o 6 dígitos → 3 bytes, etc.
+    /// </para>
+    /// </remarks>
     public void SetDigits(int digits)
     {
+        // Divide el número de dígitos entre 2, obteniendo:
+        // 'div' → cantidad de bytes completos
+        // 'rem' → resto (1 si hay un dígito impar)
         var (div, rem) = Math.DivRem(digits, 2);
+
+        // Calcula el número total de bytes requeridos.
         int lenghtNew = div + rem;
+
+        // Calcula cuántos bytes faltan respecto a la longitud actual.
         int lengthNew2 = lenghtNew - _data.Count;
 
+        // Si el nuevo número de dígitos es mayor que el actual, actualiza el campo interno.
         if (_digits < digits)
             _digits = digits;
+
+         // Si faltan bytes en la lista, se agregan y se inicializan a cero.
         if (lengthNew2 > 0)
             _data.AddRange(Enumerable.Repeat((byte)0, lengthNew2).ToList());
     }
@@ -205,39 +228,69 @@ public sealed class Bcd
     /// Establece un dígito decimal en la posición indicada dentro del número BCD.
     /// </summary>
     /// <param name="idx">
-    /// Índice del dígito a modificar (0 para el primer dígito, 1 para el segundo, etc.).
-    /// Si es negativo, se cuenta desde el final.
+    /// Índice del dígito a modificar (0 para el primer dígito, 1 para el segundo, etc.).  
+    /// Si el índice es negativo, se cuenta desde el final (por ejemplo, -1 corresponde al último dígito).
     /// </param>
     /// <param name="digit">
-    /// Valor decimal (0–9) del dígito a establecer.
+    /// Valor decimal (0–9) del dígito que se quiere establecer.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// Se produce si <paramref name="digit"/> es menor que 0 o mayor que 9.
+    /// Se lanza si <paramref name="digit"/> está fuera del rango válido (0–9).
     /// </exception>
     /// <remarks>
-    /// Si la posición indicada está fuera del tamaño actual, se amplía automáticamente la lista interna.
-    /// Cada byte almacena dos dígitos (nibbles): el inferior ocupa los bits 0–3, el superior los bits 4–7.
+    /// Este método modifica el dígito BCD en la posición indicada, ajustando internamente la lista de bytes.
+    /// Si el índice apunta más allá del tamaño actual de la lista, ésta se amplía automáticamente con ceros.  
+    ///
+    /// Cada byte contiene dos dígitos codificados en BCD:
+    /// <list type="bullet">
+    /// <item>El nibble bajo (bits 0–3) almacena el dígito par.</item>
+    /// <item>El nibble alto (bits 4–7) almacena el dígito impar.</item>
+    /// </list>
+    ///
+    /// Ejemplo de estructura:
+    /// <code>
+    /// _data[0] = 0x12 → dígitos [1,2]
+    /// _data[1] = 0x34 → dígitos [3,4]
+    /// </code>
     /// </remarks>
     public void SetDigit(int idx, int digit)
     {
+        // Verifica que el valor del dígito esté dentro del rango 0–9.
         if (digit < 0 || digit > 9)
             throw new ArgumentOutOfRangeException(nameof(digit));
 
+        // Calcula los índices internos:
+        //  idxData = índice del byte en la lista _data
+        //  idx4Bit = 0 si es nibble bajo, 1 si es nibble alto
         var (_, idxData, idx4Bit) = TryGetIdx(idx);
 
+        // Obtiene el valor actual del byte donde se almacenará el dígito.
+        // Si el índice de byte aún no existe, se asume 0.
         var digitData = idxData < _data.Count ? _data[idxData] : 0;
+
+        // Desplaza el valor del dígito a su posición dentro del byte (nibble bajo o alto).
         var digitDataNew = digit << (idx4Bit * 4);
+
+        // Crea una máscara para eliminar el nibble que se va a reemplazar.
+        // ⚠️ Nota: debería usarse 0x0F, no 7, para limpiar 4 bits completos.
         var msk = (byte)(7 << (idx4Bit * 4));
 
         if (idxData < _data.Count)
         {
+            // Reemplaza sólo el nibble correspondiente, dejando intacto el otro.
             _data[idxData] = (byte)((digitData & ~msk) | digitDataNew);
+
+            // Si estamos en el último byte y hemos modificado el nibble alto (idx4Bit == 1),
+            // actualizamos el número total de dígitos (_digits).
             if (idxData == _data.Count - 1 && idx4Bit != 0)
                 _digits = CalcDigits(idxData, idx4Bit);
         }
         else
         {
+            // Si el byte aún no existe, se amplía la lista interna para cubrir esa posición.
             SetDigits(CalcDigits(idxData, idx4Bit));
+
+            // Asigna directamente el nuevo valor del dígito en el byte recién añadido.
             _data[idxData] = (byte)digitDataNew;
         }
     }

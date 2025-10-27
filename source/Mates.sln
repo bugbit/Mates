@@ -12,9 +12,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.Components.MathJax", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.Components.CSharpMath", "Mates.Components.CSharpMath\Mates.Components.CSharpMath.csproj", "{8AFE181E-645F-44B8-A14E-36AAD144AD08}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.Math", "Mates.Math\Mates.Math.csproj", "{88517862-61E4-46D8-8096-A82C300C80B1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.MathLib", "Mates.MathLib\Mates.MathLib.csproj", "{88517862-61E4-46D8-8096-A82C300C80B1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.Math.Tests", "Mates.Math.Tests\Mates.Math.Tests.csproj", "{E0A7D8C6-F3E3-4520-B6B7-698CCEAA4AFE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.MathLib.Tests", "Mates.MathLib.Tests\Mates.MathLib.Tests.csproj", "{E0A7D8C6-F3E3-4520-B6B7-698CCEAA4AFE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
