@@ -4,19 +4,20 @@
 // Propósito:   Escritor de dígitos BCD empaquetados (4 bits por dígito).
 //              Al agregar, cada par de dígitos se empaqueta en un byte con el
 //              primer dígito en el nibble alto y el segundo en el nibble bajo.
-//              Al materializar (ToBcd), los bytes se devuelven en orden inverso
-//              (derecha→izquierda) junto con el número total de dígitos.
+//              Al materializar (ToBcd / ToBcdReverse), se puede devolver el
+//              buffer en el mismo orden de construcción o en orden inverso
+//              (derecha→izquierda), junto con el número total de dígitos.
 // Dependencias: System, System.Collections.Generic, System.Linq (Reverse<T>),
-//               y el tipo externo `Bcd` (no incluido aquí).
-// Riesgos:     - No es thread-safe: instancias compartidas requieren sincronización externa.
-//              - Con conteo impar de dígitos, el nibble bajo del último byte se rellena con 0x0.
-//              - La semántica exacta de `Bcd` se asume; valide su contrato.
+//               y el tipo externo `Bcd`.
+// Concurrencia: No es thread-safe; sincroniza si compartes instancia.
+// Errores:     Con número impar de dígitos, el nibble bajo del último byte
+//              queda a 0x0 (relleno).
 // -----------------------------------------------------------------------------
 
 /// <summary>
 /// Construye un valor en BCD empaquetado (4 bits por dígito) a partir de dígitos decimales,
-/// almacenando internamente los bytes en el orden de construcción y materializándolos
-/// en orden inverso (derecha→izquierda).
+/// almacenando internamente los bytes en el orden de construcción y permitiendo materializarlos
+/// tal cual (<see cref="ToBcd"/>) o en orden inverso (<see cref="ToBcdReverse"/>).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,38 +26,50 @@
 /// el nibble bajo del último byte se rellena con <c>0x0</c>.
 /// </para>
 /// <para>
-/// Seguridad de subprocesos: no es seguro para acceso concurrente. Coordine el acceso si la
+/// Seguridad de subprocesos: no es seguro para acceso concurrente. Coordina el acceso si la
 /// instancia se usa desde múltiples hilos.
 /// </para>
 /// <para>
-/// Requiere <c>System.Linq</c> debido al uso de <see cref="Enumerable.Reverse{TSource}(IEnumerable{TSource})"/>.
+/// Requiere <c>System.Linq</c> por el uso de <see cref="Enumerable.Reverse{TSource}(System.Collections.Generic.IEnumerable{TSource})"/>.
 /// </para>
 /// </remarks>
 /// <example>
 /// <code>
-/// var w = new BcdWriterRightToLeft();
+/// var w = new BcdWriter();
 /// w.Add(1); // 0x10
 /// w.Add(2); // 0x12
-/// w.Add(3); // 0x12, 0x30 (nibble bajo pendiente)
+/// w.Add(3); // 0x12, 0x30 (nibble bajo aún pendiente)
 /// w.Add(4); // 0x12, 0x34
 ///
-/// // ToBcd invierte los bytes (derecha→izquierda) según la convención:
-/// Bcd bcd = w.ToBcd(); // bytes devueltos: [0x34, 0x12], dígitos: 4
+/// // Materializa en el mismo orden:
+/// Bcd bcd = w.ToBcd();           // [0x12, 0x34], dígitos: 4
+///
+/// // O en orden inverso derecha→izquierda:
+/// Bcd bcdRev = w.ToBcdReverse(); // [0x34, 0x12], dígitos: 4
 /// </code>
 /// </example>
 public class BcdWriter : IDisposable
 {
-    // Bytes acumulados en orden de construcción (izquierda→derecha).
+    /// <summary>
+    /// Bytes acumulados en orden de construcción (izquierda→derecha).
+    /// </summary>
     private List<byte> _data = new();
 
-    // Índice de nibble dentro del byte en construcción: 1 = alto (siguiente Add inicia byte), 0 = bajo.
+    /// <summary>
+    /// Índice de nibble dentro del byte en construcción: 1 = alto (el siguiente <see cref="Add"/> inicia byte), 0 = bajo.
+    /// </summary>
     private int _idx4Bit = 1;
 
-    // Índice del byte actual dentro de _data; -1 cuando aún no hay bytes.
+    /// <summary>
+    /// Índice del byte actual dentro de <see cref="_data"/>; -1 cuando aún no hay bytes.
+    /// </summary>
     private int _idx = -1;
 
-    // Conteo total de dígitos agregados (0..N).
+    /// <summary>
+    /// Conteo total de dígitos agregados (0..N).
+    /// </summary>
     private int _digits = 0;
+
     private bool disposedValue;
 
     /// <summary>
@@ -68,54 +81,45 @@ public class BcdWriter : IDisposable
     /// </exception>
     /// <remarks>
     /// El primer dígito de cada byte se coloca en el nibble alto (desplazado 4 bits a la izquierda).
-    /// El segundo dígito se OR-ea en el nibble bajo del mismo byte.
-    /// Con número impar de dígitos, el nibble bajo del último byte queda rellenado con <c>0x0</c>.
-    /// 123+456789 = 456912 => 219654
-    /// 3+9 = 12 digit=2 carry = 1 [0x0200]
-    /// 2+9 + 1 = 11  digit=1 carry = 1 [0x0201]
-    /// 1+7 + 1 = 9 digit=9 carry = 1 [0x0201, 0x0900]
-    /// 0+6 = 6 digit=6 carry = 0 [0x0201, 0x0906]
-    /// 0+5 = 5 digit=5 carry = 0 [0x0201, 0x0906, 0x0500]
-    /// 0+4 = 4 digit=4 carry = 0 [0x0201, 0x0906, 0x0504]
+    /// El segundo dígito se inserta en el nibble bajo del mismo byte (OR).
+    /// Con número impar de dígitos, el nibble bajo del último byte queda <c>0x0</c>.
     /// </remarks>
-    /// <example>
-    /// <code>
-    /// var w = new BcdWriterRightToLeft();
-    /// w.Add(9); // _data = [0x90]
-    /// w.Add(5); // _data = [0x95]
-    /// w.Add(3); // _data = [0x95, 0x30] (nibble bajo sin completar aún)
-    /// </code>
-    /// </example>
     public void Add(int digit)
     {
-        // Verifica que el valor del dígito esté dentro del rango 0–9.
         if (digit < 0 || digit > 9)
             throw new ArgumentOutOfRangeException(nameof(digit));
 
         if (_idx4Bit == 1)
         {
-            // Coloca el dígito en el nibble alto de un nuevo byte.
             _data.Add((byte)(digit << 4));
             _idx++;
             _idx4Bit = 0;
         }
         else
         {
-            // Completa el nibble bajo del byte actual.
             _data[_idx] |= (byte)digit;
             _idx4Bit = 1;
         }
         _digits++;
     }
 
+    /// <summary>
+    /// Materializa el contenido BCD invirtiendo el orden de los bytes (derecha→izquierda).
+    /// </summary>
+    /// <returns>Instancia <see cref="Bcd"/> con los bytes ya invertidos y el total de dígitos.</returns>
+    /// <remarks>
+    /// Para número de dígitos par, se invierten los nibbles en bloque (alto↔bajo) de cada byte al retroceder.
+    /// Para impar, se traslada el primer nibble alto del último byte al primer nibble alto del resultado y
+    /// se continúa ensamblando nibble a nibble.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // "456912" => datos internos [0x21, 0x96, 0x54] → resultado [0x45, 0x69, 0x12]
+    /// var bcd = writer.ToBcdReverse();
+    /// </code>
+    /// </example>
     public Bcd ToBcdReverse()
     {
-        /*
-            Ejemplo:
-                . "456912" si par [0x21, 0x96, 0x54]. Bcd : [ 0x45, 0x69, 0x12 ]
-                . "45691" si impar [0x19, 0x65, 0x40]. Bcd : [ 0x45, 0x69, 0x10 ]
-         */
-
         var dataNew = new byte[_data.Count];
         var dataRead = _data.AsReadOnly<byte>();
 
@@ -131,7 +135,6 @@ public class BcdWriter : IDisposable
             for (int i = 0, j = dataRead.Count - 1; j >= 0; i++, j--)
             {
                 var byteRead = dataRead[j];
-
                 // 0x19 => 0x91
                 dataNew[i] = (byte)((byteRead & 0x0F) << 4 | (byteRead & 0xF0) >> 4);
             }
@@ -139,15 +142,6 @@ public class BcdWriter : IDisposable
 
         void Impar()
         {
-            /*
-             * "45691"
-                dataRead = [0x19, 0x65, 0x40]
-                dataNew=[ 0x4 ]
-                dataNew=[ 0x45 ]
-                dataNew=[ 0x45, 0x6 ]
-                dataNew=[ 0x45, 0x69 ]
-                dataNew=[ 0x45, 0x69, 0x10 ]
-             */
             for (int i = 0, j = dataRead.Count - 1, idx4Bit = 1; j >= 0;)
             {
                 var byteRead = dataRead[j];
@@ -168,36 +162,34 @@ public class BcdWriter : IDisposable
         }
     }
 
+    /// <summary>
+    /// Materializa el contenido BCD en el mismo orden en el que se fue construyendo.
+    /// </summary>
+    /// <returns>Instancia <see cref="Bcd"/> con el buffer tal cual y el total de dígitos.</returns>
     public Bcd ToBcd() => new(_data, _digits);
 
+    /// <summary>
+    /// Libera recursos administrados (limpia el buffer interno) y marca la instancia como descartada.
+    /// </summary>
+    /// <param name="disposing">Si es <see langword="true"/>, se liberan recursos administrados.</param>
     protected virtual void Dispose(bool disposing)
     {
         if (!disposedValue)
         {
             if (disposing)
             {
-                // TODO: eliminar el estado administrado (objetos administrados)
                 _data.Clear();
             }
-
-            // TODO: liberar los recursos no administrados (objetos no administrados) y reemplazar el finalizador
-            // TODO: establecer los campos grandes como NULL
             _data = null;
-
             disposedValue = true;
         }
     }
 
-    // // TODO: reemplazar el finalizador solo si "Dispose(bool disposing)" tiene código para liberar los recursos no administrados
-    // ~BcdWriterRightToLeft()
-    // {
-    //     // No cambie este código. Coloque el código de limpieza en el método "Dispose(bool disposing)".
-    //     Dispose(disposing: false);
-    // }
-
+    /// <summary>
+    /// Implementación del patrón <see cref="IDisposable"/>.
+    /// </summary>
     public void Dispose()
     {
-        // No cambie este código. Coloque el código de limpieza en el método "Dispose(bool disposing)".
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
