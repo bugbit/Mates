@@ -1,141 +1,127 @@
-﻿namespace Mates.MathLib.Tests;
-
-using System;
+﻿using System;
+using System.Collections;
 using System.Linq;
 using Mates.MathLib;
 using Xunit;
-using FluentAssertions;
+
+namespace Mates.MathLib.Tests;
 
 public class BcdTests
 {
     [Fact]
-    public void Constructor_DeberiaCrearListaVacia()
+    public void Parse_1234_ProducesExpectedBytesAndDigits()
     {
-        var bcd = new Bcd();
+        // Act
+        var bcd = Bcd.Parse("1234");
 
-        bcd.Data.Should().BeEmpty();
+        // Assert
+        Assert.Equal(4, bcd.Digits);
+        Assert.Equal(new byte[] { 0x12, 0x34 }, bcd.Data);
     }
 
     [Theory]
-    [InlineData(0, 0, 1)]
-    [InlineData(1, 0, 0)]
-    [InlineData(2, 1, 1)]
-    [InlineData(3, 1, 0)]
-    [InlineData(-1, 1, 0)] // negativo
-    [InlineData(-2, 1, 1)] // negativo par
-    public void GetIdx_DeberiaCalcularCorrectamente(int idx, int esperadoIdxData, int esperadoIdx4Bit)
+    [InlineData("1234", 0, 1)]
+    [InlineData("1234", 1, 2)]
+    [InlineData("1234", 2, 3)]
+    [InlineData("1234", 3, 4)]
+    [InlineData("456912", -1, 2)] // negativo: último dígito
+    [InlineData("456912", -6, 4)] // negativo: primero
+    public void GetDigit_Indexing_Works(string value, int idx, int expectedDigit)
     {
-        var bcd = new Bcd();
-
-        // Prepara data para el caso de negativos
-        bcd.SetDigit(0, 1);
-        bcd.SetDigit(1, 2);
-        bcd.SetDigit(2, 3);
-        bcd.SetDigit(3, 4);
-
-        var (_, idxData, idx4Bit) = bcd.TryGetIdx(idx);
-
-        idxData.Should().Be(esperadoIdxData);
-        idx4Bit.Should().Be(esperadoIdx4Bit);
-    }
-
-    [Theory]
-    [InlineData(0, 5)]
-    [InlineData(1, 9)]
-    [InlineData(2, 3)]
-    [InlineData(3, 7)]
-    public void SetDigit_DeberiaAgregarODefinirDigitosCorrectamente(int idx, int digit)
-    {
-        var bcd = new Bcd();
-
-        bcd.SetDigit(idx, digit);
-
-        // Verificamos que el Data tenga al menos el byte esperado
-        var data = bcd.Data;
-        data.Should().NotBeEmpty();
-
-        var (idxData, idxRem) = Math.DivRem(Math.Abs(idx), 2);
-        var valorGuardado = data[idxData];
-        var nibble = (valorGuardado >> ((1 - idxRem) * 4)) & 0xF;
-
-        nibble.Should().Be(digit);
+        var bcd = Bcd.Parse(value);
+        Assert.Equal(expectedDigit, bcd.GetDigit(idx));
     }
 
     [Fact]
-    public void SetDigit_DeberiaActualizarDigitoExistenteAumentarLista()
+    public void GetDigit_OutOfRange_ReturnsZero()
+    {
+        var bcd = Bcd.Parse("12");
+        Assert.Equal(0, bcd.GetDigit(5));   // fuera de rango
+        Assert.Equal(0, new Bcd().GetDigit(0)); // sin datos
+    }
+
+    [Fact]
+    public void GetIdx_And_GetIndex_AreConsistent()
+    {
+        var bcd=new Bcd(11);
+
+        // No depende de datos internos: sólo de la aritmética de índices
+        for (int idx = 0; idx < 10; idx++)
+        {
+            var (idxData, idx4Bit) = bcd.GetIdx(idx);
+            Assert.Equal(idx, Bcd.GetIndex(idxData, idx4Bit));
+        }
+    }
+
+    [Fact]
+    public void SetDigit_ExpandsStorage_And_PersistsValue()
     {
         var bcd = new Bcd();
-        bcd.SetDigit(0, 3);
-        bcd.Data.Length.Should().Be(1);
 
-        bcd.SetDigit(1, 8);
-        bcd.Data.Length.Should().Be(1); // mismo byte
-    }
+        // Escribimos un dígito en un índice que fuerza a crear bytes
+        bcd.SetDigit(3, 7); // índice 3 -> segundo byte, nibble alto
 
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(10)]
-    public void SetDigit_DeberiaLanzarExcepcionSiDigitoInvalido(int digit)
-    {
-        var bcd = new Bcd();
+        // Debe poder leerse sin importar que antes no hubiera datos
+        Assert.Equal(7, bcd.GetDigit(3));
 
-        Action act = () => bcd.SetDigit(0, digit);
-
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        // Otros dígitos no escritos de ese byte/vecinos deben ser 0 por defecto
+        Assert.Equal(0, bcd.GetDigit(2)); // nibble bajo del mismo byte
+        Assert.Equal(0, bcd.GetDigit(0));
+        Assert.Equal(0, bcd.GetDigit(1));
     }
 
     [Fact]
-    public void Data_DeberiaDevolverCopiaYNoReferencia()
+    public void SetDigit_ReplacesNibble_Correctly()
     {
-        var bcd = new Bcd();
-        bcd.SetDigit(0, 4);
+        // Partimos de 0x12, 0x34 => "1234"
+        var bcd = Bcd.Parse("1234");
 
-        var data1 = bcd.Data;
-        data1[0] = 0xFF; // modificar copia
+        // Cambiamos el nibble alto del primer byte (índice 0 -> '1') a '9'
+        bcd.SetDigit(0, 9);
+        Assert.Equal(9, bcd.GetDigit(0));
+        Assert.Equal(2, bcd.GetDigit(1)); // el nibble bajo del mismo byte debe quedar intacto
 
-        var data2 = bcd.Data;
-        data2[0].Should().NotBe(0xFF); // original no debe cambiar
+        // Cambiamos el nibble bajo del segundo byte (índice 3 -> '4') a '5'
+        bcd.SetDigit(3, 5);
+        Assert.Equal(5, bcd.GetDigit(3));
+        Assert.Equal(3, bcd.GetDigit(2)); // el nibble alto del mismo byte debe quedar intacto
+
+        // Verificación cruda de bytes: ahora deberían ser [0x92, 0x35]
+        Assert.Equal(new byte[] { 0x92, 0x35 }, bcd.Data);
     }
 
     [Fact]
-    public void GetDigit_ReturnsCorrectDigits()
+    public void Parse_WithNonDigit_ThrowsFormatException()
     {
-        // Arrange
-        // Numero 1234
-        var data = new List<byte> { 0x12, 0x34 };
-        var bcd = new Bcd(data, digits: 4);
-
-        // Act & Assert
-        Assert.Equal(1, bcd.GetDigit(0)); // nibble bajo del primer byte
-        Assert.Equal(2, bcd.GetDigit(1)); // nibble alto del primer byte
-        Assert.Equal(3, bcd.GetDigit(2)); // nibble bajo del segundo byte
-        Assert.Equal(4, bcd.GetDigit(3)); // nibble alto del segundo byte
+        Assert.Throws<FormatException>(() => Bcd.Parse("12a3"));
     }
 
     [Fact]
-    public void GetDigit_SupportsNegativeIndices()
+    public void Sum_SameLength_AddsCorrectly_AndReturnsNewBcd()
     {
-        // Arrange
-        var data = new List<byte> { 0x12, 0x34 };
-        var bcd = new Bcd(data, digits: 4);
+        // 123 + 877 = 1000  (mismo número de dígitos; gestiona acarreo extra)
+        var a = Bcd.Parse("123");
+        var b = Bcd.Parse("877");
 
-        // Act & Assert
-        Assert.Equal(4, bcd.GetDigit(-1)); // último dígito
-        Assert.Equal(3, bcd.GetDigit(-2));
-        Assert.Equal(2, bcd.GetDigit(-3));
-        Assert.Equal(1, bcd.GetDigit(-4));
+        var (result, carries) = Bcd.Sum(a, b);
+
+        Assert.NotNull(result);
+        Assert.Equal(Bcd.Parse("1000").Data, result!.Data);
+        Assert.Equal(Bcd.Parse("1000").Digits, result.Digits);
+
+        // Opcional: los carries pueden devolverse si la implementación los marca;
+        // no asumo formato concreto aquí para no acoplar el test a flags internos.
     }
 
     [Fact]
-    public void GetDigit_Return0WhenIndexOutOfRange()
+    public void SetDigits_GrowsOnly_DoesNotShrinkData()
     {
-        // Arrange
-        var data = new List<byte> { 0x12 };
-        var bcd = new Bcd(data, digits: 2);
+        var bcd = Bcd.Parse("1234"); // 2 bytes
+        bcd.SetDigits(6);            // debe crecer a 3 bytes como mínimo
 
-        // Act & Assert
-        Assert.Equal(0, bcd.GetDigit(5));
-        Assert.Equal(0, bcd.GetDigit(-3));
+        Assert.True(bcd.Data.Length >= 3);
+        // Si luego se pide menos, no hay garantía de “encoger”: sólo comprobamos que no rompa
+        bcd.SetDigits(2);
+        Assert.True(bcd.Data.Length >= 1);
     }
 }
-

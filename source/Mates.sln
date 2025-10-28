@@ -16,6 +16,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.MathLib", "Mates.Math
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.MathLib.Tests", "Mates.MathLib.Tests\Mates.MathLib.Tests.csproj", "{E0A7D8C6-F3E3-4520-B6B7-698CCEAA4AFE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mates.Common", "Mates.Common\Mates.Common.csproj", "{581ECA1F-3128-4C41-93D7-21531D5C9286}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +54,10 @@ Global
 		{E0A7D8C6-F3E3-4520-B6B7-698CCEAA4AFE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E0A7D8C6-F3E3-4520-B6B7-698CCEAA4AFE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E0A7D8C6-F3E3-4520-B6B7-698CCEAA4AFE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{581ECA1F-3128-4C41-93D7-21531D5C9286}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{581ECA1F-3128-4C41-93D7-21531D5C9286}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{581ECA1F-3128-4C41-93D7-21531D5C9286}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{581ECA1F-3128-4C41-93D7-21531D5C9286}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

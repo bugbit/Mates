@@ -141,7 +141,7 @@ public sealed class Bcd
     /// <param name="idxData">Índice del byte en el array de datos BCD.</param>
     /// <param name="idx4Bit">Posición dentro del byte: 0 = nibble bajo, 1 = nibble alto.</param>
     /// <returns>Índice del dígito dentro del número completo.</returns>
-    public static int GetIndex(int idxData, int idx4Bit) => idxData * 2 + idx4Bit;
+    public static int GetIndex(int idxData, int idx4Bit) => idxData * 2 + (1 - idx4Bit);
 
     /// <summary>
     /// Calcula la cantidad total de dígitos representados hasta una posición determinada
@@ -343,11 +343,43 @@ public sealed class Bcd
         return digitData & 0x0F;
     }
 
-    public (Bcd? result, BitArray? carries) Sum(Bcd n1, Bcd n2, BcdOperationFlags flags = BcdOperationFlags.None)
+    public static Bcd Parse(string value)
+    {
+        using var bcdWriter = new BcdWriter();
+
+        foreach (var c in value)
+        {
+            if (!char.IsDigit(c))
+                throw new FormatException();
+
+            bcdWriter.Add(c - '0');
+        }
+
+        return bcdWriter.ToBcd();
+    }
+
+    public void SetData(Bcd bcd)
+    {
+        /*
+        var data = bcd._data;
+
+        if (_data.Count == data.Count)
+            data.CopyTo(_data.ToArray());
+        else
+            _data = new List<byte>(data);
+
+        _digits = bcd._digits;
+        */
+
+        _data.CopyFrom(bcd._data);
+        _digits = bcd._digits;
+    }
+
+    public static (Bcd? result, BitArray? carries) Sum(Bcd n1, Bcd n2, BcdOperationFlags flags = BcdOperationFlags.None)
     {
         Bcd? result = null;
         BitArray? carries = null;
-        int count = Math.Min(n1.Digits, n2.Digits);
+        int count = Math.Max(n1.Digits, n2.Digits);
 
         /*
          * 123+456789 = 456912 => 219654
@@ -358,7 +390,40 @@ public sealed class Bcd
          * 0+5 = 5 digit=5 carry = 0 [ 0x0201, 0x0906, 0x0500 ]
          * 0+4 = 4 digit=4 carry = 0 [ 0x0201, 0x0906, 0x0504 ]          
          */
-        //List<byte>
+
+        using var bcdWriter = new BcdWriter();
+        int carry = 0;
+
+        for (int i = 1; i <= count || carry > 0; i++)
+        {
+            var digit1 = n1.GetDigit(-i);
+            var digit2 = n2.GetDigit(-i);
+            var resultDigit = digit1 + digit2 + carry;
+
+            if (resultDigit > 9)
+            {
+                carry = 1;
+                resultDigit -= 10;
+            }
+            else
+            {
+                carry = 0;
+            }
+
+            if (flags.HasFlag(BcdOperationFlags.ReturnCarries))
+            {
+                carries ??= new(count);
+                carries.Set(i - 1, true);
+            }
+            bcdWriter.Add(resultDigit);
+        }
+
+        var bcd = bcdWriter.ToBcdReverse();
+
+        if (flags.HasFlag(BcdOperationFlags.NoNewResult))
+            n1.SetData(bcd);
+        else
+            result = bcd;
 
         return (result, carries);
     }
@@ -409,7 +474,7 @@ public sealed class Bcd
             idx = _digits + idx;
 
         // Si después del ajuste sigue siendo negativo, el índice no es válido.
-        if (idx < 0 || idx >= _digits)
+        if (idx < 0 || idx > _digits)
         {
             if (throwsException)
                 throw new ArgumentOutOfRangeException(nameof(idx));
