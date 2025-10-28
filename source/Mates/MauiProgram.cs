@@ -19,6 +19,8 @@ namespace Mates
             // Add device-specific services used by the Mates.Shared project
             builder.Services.AddSingleton<IFormFactor, FormFactor>();
 
+            builder.Services.AddMatesApplication();
+
             builder.Services.AddMauiBlazorWebView();
 
 #if DEBUG

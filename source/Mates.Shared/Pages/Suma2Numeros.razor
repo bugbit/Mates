@@ -1,9 +1,45 @@
 ﻿@page "/suma2numeros"
+@using Mates.Shared.ViewModels
 
 <PageTitle>Suma 2 Numeros</PageTitle>
 
 <h1>Suma 2 Numeros</h1>
+<EditForm Model="_vm" OnValidSubmit="Submit">
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <label>
+                    Numero 1:
+                    <InputText @bind-Value="_vm!.Numero1" />
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <label>
+                    Numero 2:
+                    <InputText @bind-Value="_vm!.Numero2" />
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <button type="submit">Resolver</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+            </div>
+        </div>
+    </div>
+</EditForm>
 
 @code {
+    Suma2NumerosViewModel? _vm;
 
+    protected override void OnInitialized() => _vm ??= new();
+
+    void Submit()
+    {
+    }
 }

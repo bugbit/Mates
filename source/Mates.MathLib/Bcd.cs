@@ -183,20 +183,9 @@ public sealed class Bcd
     /// <param name="value">Cadena con dígitos decimales.</param>
     /// <returns>Instancia <see cref="Bcd"/> equivalente.</returns>
     /// <exception cref="FormatException">Si <paramref name="value"/> contiene caracteres no numéricos.</exception>
-    public static Bcd Parse(string value)
-    {
-        using var bcdWriter = new BcdWriter();
+    public static Bcd Parse(string value) => TryParse(value, true).bcd!;
 
-        foreach (var c in value)
-        {
-            if (!char.IsDigit(c))
-                throw new FormatException();
-
-            bcdWriter.Add(c - '0');
-        }
-
-        return bcdWriter.ToBcd();
-    }
+    public static (bool ok, Bcd? bcd) TryParse(string value) => TryParse(value, false);
 
     /// <summary>
     /// Copia los datos y metadatos (dígitos) de otra instancia <see cref="Bcd"/>.
@@ -304,5 +293,25 @@ public sealed class Bcd
 
         // Convención interna: 0 = nibble bajo, 1 = nibble alto.
         return (ok, idxData, 1 - idx4Bit);
+    }
+
+    private static (bool ok, Bcd? bcd) TryParse(string value, bool throwsException)
+    {
+        using var bcdWriter = new BcdWriter();
+
+        foreach (var c in value)
+        {
+            if (!char.IsDigit(c))
+            {
+                if (throwsException)
+                    throw new FormatException();
+
+                return (false, null);
+            }
+
+            bcdWriter.Add(c - '0');
+        }
+
+        return (true, bcdWriter.ToBcd());
     }
 }
