@@ -137,10 +137,6 @@ public sealed class Bcd
     /// <param name="idx">Índice del dígito (0-based; negativos desde el final).</param>
     /// <param name="digit">Dígito decimal (0–9).</param>
     /// <exception cref="ArgumentOutOfRangeException">Si <paramref name="digit"/> está fuera de 0–9.</exception>
-    /// <remarks>
-    /// ⚠️ Nota técnica: la máscara usada para limpiar el nibble es <c>7 &lt;&lt; (idx4Bit*4)</c>;
-    /// probablemente debería ser <c>0x0F &lt;&lt; (idx4Bit*4)</c> para limpiar 4 bits completos.
-    /// </remarks>
     public void SetDigit(int idx, int digit)
     {
         if (digit < 0 || digit > 9)
@@ -150,8 +146,7 @@ public sealed class Bcd
         var digitData = idxData < _data.Count ? _data[idxData] : 0;
         var digitDataNew = digit << (idx4Bit * 4);
 
-        // ⚠️ Ver comentario en la documentación.
-        var msk = (byte)(7 << (idx4Bit * 4));
+        var msk = (byte)(0xF << (idx4Bit * 4));
 
         if (idxData < _data.Count)
         {
