@@ -10,10 +10,34 @@
     private const string _nameParameterResult = "Result";
     private Type? _componentType;
     private Dictionary<string, object>? _parameters;
+    private IResult? _lastResult;
 
-    public void Visit(LaTeXResult result) => SetCompoment(result);
+    [Parameter] public IResult? Result { get; set; }
+    [Parameter] public EventCallback<IResult?> ResultChanged { get; set; }
 
-    private void SetCompoment<T>(T component) where T : IResult
+    protected override async Task OnParametersSetAsync()
+    {
+        // Detecta cambio del parámetro
+        if (!object.ReferenceEquals(Result, _lastResult))
+        {
+            _lastResult = Result;
+            await ProcessUrlAsync();
+            // No necesitas StateHasChanged(); Blazor re-renderiza tras el await
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    public void Visit(LaTeXResult result) => SetCompoment<CPLaTeXResult>(result);
+
+    async Task ProcessUrlAsync()
+    {
+        Result?.Accept(this);
+
+        await ResultChanged.InvokeAsync(Result);
+    }
+
+    private void SetCompoment<T>(IResult component) where T : IComponent
     {
         _componentType = typeof(T);
         _parameters = new()

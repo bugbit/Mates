@@ -11,6 +11,12 @@
     <div class="container">
         <div class="row">
             <div class="col">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
                 <label>
                     Numero 1:
                     <InputText @bind-Value="_vm!.Numero1" />
@@ -32,11 +38,15 @@
         </div>
         <div class="row">
             <div class="col">
-               @*  <Result1>
+                @*  <Result1>
                     <a>Prueba</a>
                     <Result2></Result2>
                 </Result1> *@
                 @* <DynamicComponent Type="componentType" Parameters="parameters" /> *@
+                @if (_result is not null)
+                {
+                    <CPResult Result="_result" />
+                }
             </div>
         </div>
     </div>
@@ -44,19 +54,20 @@
 
 @code {
     Suma2NumerosViewModel? _vm;
-    IResult? _Result;
+    IResult? _result;
 
     /*
     private Type componentType = typeof(Result1);
     private Dictionary<string, object> parameters = new()
     {
         [nameof(Result1.ChildContent)] = new RenderFragment(@<p>Welcome to your new app!</p>)
-    };
+        };
     */
 
     protected override void OnInitialized() => _vm ??= new();
 
     void Submit()
     {
+        _result = !string.IsNullOrEmpty(_vm!.Numero1) && !string.IsNullOrEmpty(_vm!.Numero2) ? explain.Sumar2Numeros(_vm!.Numero1, _vm!.Numero2) : null;
     }
 }
