@@ -1,4 +1,7 @@
 ﻿@page "/suma2numeros"
+@inject INaturalNumberExplain explain
+@using Mates.Common.Interfaces
+@using Mates.Common.Result
 @using Mates.Shared.ViewModels
 
 <PageTitle>Suma 2 Numeros</PageTitle>
@@ -29,6 +32,11 @@
         </div>
         <div class="row">
             <div class="col">
+               @*  <Result1>
+                    <a>Prueba</a>
+                    <Result2></Result2>
+                </Result1> *@
+                @* <DynamicComponent Type="componentType" Parameters="parameters" /> *@
             </div>
         </div>
     </div>
@@ -36,6 +44,15 @@
 
 @code {
     Suma2NumerosViewModel? _vm;
+    IResult? _Result;
+
+    /*
+    private Type componentType = typeof(Result1);
+    private Dictionary<string, object> parameters = new()
+    {
+        [nameof(Result1.ChildContent)] = new RenderFragment(@<p>Welcome to your new app!</p>)
+    };
+    */
 
     protected override void OnInitialized() => _vm ??= new();
 

@@ -124,4 +124,109 @@ public class BcdTests
         bcd.SetDigits(2);
         Assert.True(bcd.Data.Length >= 1);
     }
+
+    [Fact]
+    public void ToString_EmptyBcd_ReturnsEmptyString()
+    {
+        var bcd = new Bcd();
+        Assert.Equal(string.Empty, bcd.ToString());
+        Assert.Empty(bcd.AsEnumerable());
+    }
+
+    [Fact]
+    public void AsEnumerable_And_ToString_WithEvenDigits_AreConsistent()
+    {
+        // "1234" => bytes [0x12, 0x34]
+        var bcd = Bcd.Parse("1234");
+
+        var digits = bcd.AsEnumerable().ToArray();
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, digits);
+
+        Assert.Equal("1234", bcd.ToString());
+    }
+
+    [Fact]
+    public void AsEnumerable_And_ToString_WithOddDigits_StopExactlyAtDigits()
+    {
+        // "45691" → bytes esperables [0x45, 0x69, 0x10] (último nibble no utilizado)
+        var bcd = Bcd.Parse("45691");
+
+        var digits = bcd.AsEnumerable().ToArray();
+        Assert.Equal(new byte[] { 4, 5, 6, 9, 1 }, digits); // 5 dígitos exactos
+
+        Assert.Equal("45691", bcd.ToString());
+    }
+
+    [Fact]
+    public void AsEnumerable_PreservesLeadingZeros()
+    {
+        var bcd = Bcd.Parse("00123");
+
+        var digits = bcd.AsEnumerable().ToArray();
+        Assert.Equal(new byte[] { 0, 0, 1, 2, 3 }, digits);
+
+        Assert.Equal("00123", bcd.ToString());
+    }
+
+    [Fact]
+    public void AsEnumerable_EnumeratesHighNibbleThenLowNibble_PerByte()
+    {
+        // Construye "90 87" explícitamente para verificar el orden por byte:
+        // Byte[0] = 0x98 (nibble alto=9, bajo=8)
+        // Byte[1] = 0x07 (nibble alto=0, bajo=7)
+        var bcd = Bcd.Parse("9087");
+
+        var digits = bcd.AsEnumerable().ToArray();
+        // Debe salir: 9,0,8,7 (alto luego bajo por cada byte, y en orden de bytes)
+        Assert.Equal(new byte[] { 9, 0, 8, 7 }, digits);
+
+        Assert.Equal("9087", bcd.ToString());
+    }
+
+    [Fact]
+    public void ToString_IsReversibleWithParse()
+    {
+        var source = "000012340000567890";
+        var bcd = Bcd.Parse(source);
+
+        var roundtrip = Bcd.Parse(bcd.ToString());
+        Assert.Equal(source, roundtrip.ToString());
+        Assert.Equal(bcd.AsEnumerable().ToArray(), roundtrip.AsEnumerable().ToArray());
+    }
+
+    [Fact]
+    public void AsEnumerable_PartialEnumeration_DoesNotOverrunDigits()
+    {
+        var bcd = Bcd.Parse("123456");
+
+        // Enumeración parcial (toma 3)
+        var first3 = bcd.AsEnumerable().Take(3).ToArray();
+        Assert.Equal(new byte[] { 1, 2, 3 }, first3);
+
+        // Y completa (por control)
+        var all = bcd.AsEnumerable().ToArray();
+        Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6 }, all);
+    }
+
+    [Fact]
+    public void AsEnumerable_WithSingleDigit_Works()
+    {
+        var bcd = Bcd.Parse("7");
+        var digits = bcd.AsEnumerable().ToArray();
+
+        Assert.Single(digits);
+        Assert.Equal(7, digits[0]);
+        Assert.Equal("7", bcd.ToString());
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("00")]
+    [InlineData("0000")]
+    public void ToString_AllZeros_MatchesLength(string zeros)
+    {
+        var bcd = Bcd.Parse(zeros);
+        Assert.Equal(zeros, bcd.ToString());
+        Assert.Equal(Enumerable.Repeat((byte)0, zeros.Length).ToArray(), bcd.AsEnumerable().ToArray());
+    }
 }

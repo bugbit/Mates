@@ -1,6 +1,7 @@
 ﻿namespace Mates.MathLib;
 
 using System.Collections;
+using System.Text;
 
 public enum BcdOperationFlags { None, NoNewResult, ReturnCarries }
 
@@ -75,6 +76,80 @@ public sealed class Bcd
     /// </summary>
     /// <remarks>El array devuelto es una copia: modificarlo no afecta al contenido interno.</remarks>
     public byte[] Data => _data.ToArray();
+
+    /// <summary>
+    /// Devuelve la representación decimal del valor BCD, concatenando todos los dígitos.
+    /// </summary>
+    /// <remarks>
+    /// Recorre <see cref="AsEnumerable"/> y convierte cada dígito (0–9) a su carácter ASCII
+    /// sumando <c>'0'</c>. Complejidad O(n) en el número de dígitos.
+    /// </remarks>
+    /// <returns>
+    /// Cadena con los dígitos en orden de mayor a menor peso (MSD→LSD). Si no hay dígitos,
+    /// devuelve <see cref="string.Empty"/>.
+    /// </returns>
+    /// <example>
+    /// <code>
+    /// // Con _data = [0x12, 0x34] y _digits = 4  => "1234"
+    /// var s = bcd.ToString();
+    /// </code>
+    /// </example>
+    public override string ToString()
+    {
+        // Micro-optimización: reservar capacidad según _digits.
+        var sb = new StringBuilder(_digits);
+
+        foreach (var digit in AsEnumerable())
+            sb.Append((char)(digit + '0'));
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Enumera los dígitos decimales del valor BCD del más significativo al menos significativo.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Cada byte de <c>_data</c> contiene dos dígitos en BCD empaquetado: nibble alto (bits 7..4)
+    /// seguido del nibble bajo (bits 3..0). Este enumerador emite primero el nibble alto y después
+    /// el nibble bajo de cada byte, y se detiene al alcanzar <c>_digits</c>, ignorando cualquier
+    /// nibble de relleno (p. ej., cuando el total de dígitos es impar).
+    /// </para>
+    /// <para>
+    /// No materializa una colección intermedia: usa <c>yield return</c>, por lo que es eficiente
+    /// en memoria. Complejidad O(n) y diferida.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// Secuencia de bytes, cada uno en el rango 0–9, representando los dígitos del número.
+    /// </returns>
+    /// <example>
+    /// <code>
+    /// // _data = [0x12, 0x34], _digits = 3  => produce: 1, 2, 3 (el 4 es ignorado por límite)
+    /// foreach (var d in bcd.AsEnumerable()) Console.Write(d); // "123"
+    /// </code>
+    /// </example>
+    public IEnumerable<byte> AsEnumerable()
+    {
+        int ndigit = 0;
+
+        foreach (var item in _data)
+        {
+            // Si ya alcanzamos el total lógico de dígitos, finalizamos la enumeración.
+            if (ndigit++ >= _digits)
+                yield break;
+
+            // Emite el dígito del nibble alto: (0x12 & 0xF0) >> 4 => 1
+            yield return (byte)((item & 0xF0) >> 4);
+
+            // Comprobación temprana para no emitir nibbles de relleno en cuenta impar.
+            if (ndigit++ >= _digits)
+                yield break;
+
+            // Emite el dígito del nibble bajo: (0x12 & 0x0F) => 2
+            yield return (byte)(item & 0x0F);
+        }
+    }
 
     /// <summary>
     /// Ajusta el número total de dígitos que debe manejar la estructura interna BCD,

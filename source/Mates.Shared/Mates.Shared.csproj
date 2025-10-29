@@ -15,7 +15,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\Mates.Common\Mates.Common.csproj" />
 	  <ProjectReference Include="..\Mates.Components.MathJax\Mates.Components.MathJax.csproj" />
+	  <ProjectReference Include="..\MatesCore.Application\MatesCore.Application.csproj" />
 	</ItemGroup>
 
 </Project>

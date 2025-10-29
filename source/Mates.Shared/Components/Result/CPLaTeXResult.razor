@@ -1,0 +1,13 @@
+﻿@using Mates.Common.Result;
+
+@if (Result is not null)
+{
+    @if (!string.IsNullOrWhiteSpace(Result.LaTeX))
+    {
+        <Latex Value="@Result.LaTeX" Display=false></Latex>
+    }
+}
+
+@code {
+    [Parameter] public LaTeXResult? Result { get; set; }
+}

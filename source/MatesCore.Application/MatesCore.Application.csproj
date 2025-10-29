@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Mates.Common\Mates.Common.csproj" />
+    <ProjectReference Include="..\Mates.MathLib\Mates.MathLib.csproj" />
   </ItemGroup>
 
 </Project>

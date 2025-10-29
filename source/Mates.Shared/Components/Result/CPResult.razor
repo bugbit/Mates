@@ -1,0 +1,24 @@
+﻿@using Mates.Common.Result;
+@implements IResultVisitor
+
+@if (_componentType is not null && _parameters is not null)
+{
+    <DynamicComponent Type="_componentType" Parameters="_parameters" />
+}
+
+@code {
+    private const string _nameParameterResult = "Result";
+    private Type? _componentType;
+    private Dictionary<string, object>? _parameters;
+
+    public void Visit(LaTeXResult result) => SetCompoment(result);
+
+    private void SetCompoment<T>(T component) where T : IResult
+    {
+        _componentType = typeof(T);
+        _parameters = new()
+        {
+            [_nameParameterResult] = component
+        };
+    }
+}

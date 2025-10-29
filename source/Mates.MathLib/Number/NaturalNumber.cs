@@ -4,7 +4,7 @@ namespace Mates.MathLib.Number;
 
 public class NaturalNumber
 {
-    private Bcd _bcd;
+    private readonly Bcd _bcd;
 
     public NaturalNumber(Bcd bcd) => _bcd = bcd;
 
