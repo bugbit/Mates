@@ -8,6 +8,8 @@ public class NaturalNumber
 
     public NaturalNumber(Bcd bcd) => _bcd = bcd;
 
+    public override string ToString() => _bcd.ToString();
+
     public static NaturalNumber Parse(string value)
     {
         return new NaturalNumber(Bcd.Parse(value));

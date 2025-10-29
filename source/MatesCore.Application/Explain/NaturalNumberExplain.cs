@@ -12,6 +12,7 @@ public class NaturalNumberExplain : INaturalNumberExplain
         var latex = new LaTeXBuilder();
         var n1 = NaturalNumber.Parse(num1);
         var n2 = NaturalNumber.Parse(num2);
+        var (result, carries) = NaturalNumber.SumWithCarries(n1, n2);
 
         latex.Append(num1).Append(", ").Append(num2);
 

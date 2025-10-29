@@ -312,14 +312,15 @@ public sealed class Bcd
                 resultDigit -= 10;
             }
             else
-            {
                 carry = 0;
-            }
 
-            if (flags.HasFlag(BcdOperationFlags.ReturnCarries))
+            if (carry != 0)
             {
-                carries ??= new(count);
-                carries.Set(i - 1, true);
+                if (flags.HasFlag(BcdOperationFlags.ReturnCarries))
+                {
+                    carries ??= new(count);
+                    carries.Set(i - 1, true);
+                }
             }
             bcdWriter.Add(resultDigit);
         }
