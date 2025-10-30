@@ -14,7 +14,8 @@ public class NaturalNumberExplain : INaturalNumberExplain
         var n2 = NaturalNumber.Parse(num2);
         var (result, carries) = NaturalNumber.SumWithCarries(n1, n2);
 
-        latex.Append(num1).Append(", ").Append(num2);
+        //latex.Text(num1).Text(", ").Text(num2);
+        latex.Array("r", l => l.Phantom(ll => ll.Text("+")).Text(num1), l => l.Text("+").Text(num2), l => l.HLine().Text(result!.ToString()));
 
         return new LaTeXResult { LaTeX = latex.ToString() };
     }
