@@ -12,6 +12,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Markdig" Version="0.43.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.10" />
 		<PackageReference Include="CSharpMath.SkiaSharp" Version="0.5.1" />
 		<PackageReference Include="SkiaSharp" Version="2.88.9" />

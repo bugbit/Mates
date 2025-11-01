@@ -1,0 +1,42 @@
+﻿@using Markdig
+@using Mates.Components.CSharpMath
+
+@if (!string.IsNullOrWhiteSpace(Output))
+{
+    @((MarkupString)Output)
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> OutputChanged { get; set; }
+
+    public string? Output { get; private set; }
+
+    private string? _lastValue = null;
+
+    protected async override Task OnParametersSetAsync()
+    {
+        if (Value != _lastValue)
+        {
+            _lastValue = Value;
+            await ProcessValueAsync();
+            // No necesitas StateHasChanged(); Blazor re-renderiza tras el await
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task ProcessValueAsync()
+    {
+        var pipeline = new MarkdownPipelineBuilder().UseCSharpMath().Build();
+        var result = !string.IsNullOrWhiteSpace(Value) ? Markdown.ToHtml(Value,pipeline) : "";
+
+        if (!string.Equals(Output, result))
+        {
+            Output = result;
+            await OutputChanged.InvokeAsync(result);
+            StateHasChanged();
+        }
+    }
+
+}

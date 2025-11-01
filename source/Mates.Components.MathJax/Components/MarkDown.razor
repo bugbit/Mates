@@ -1,0 +1,65 @@
+﻿@using Markdig
+@inject IJSRuntime JsRuntime;
+@if (!string.IsNullOrWhiteSpace(Output))
+{
+    @((MarkupString)Output)
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> OutputChanged { get; set; }
+
+    public string? Output { get; private set; }
+
+    private IJSObjectReference? _module;
+    private bool _hasRendered = false;
+    private bool _outputChanged = false;
+    private bool _canDoTypeSetPromise = false;
+
+    protected async override Task OnParametersSetAsync()
+    {
+        if (_hasRendered)
+            await ProcessValueAsync();
+
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/Mates.Components.MathJax/mathjax.js");
+            await ProcessValueAsync();
+            _hasRendered = true;
+        }
+        if (_canDoTypeSetPromise)
+            if (_module is not null)
+            {
+                await _module.InvokeAsync<string>("typesetPromise");
+                _canDoTypeSetPromise = false;
+            }
+        if (_outputChanged)
+            if (_hasRendered)
+            {
+                _canDoTypeSetPromise = true;
+                _outputChanged = false;
+                StateHasChanged();
+            }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task ProcessValueAsync()
+    {
+        var pipeline = new MarkdownPipelineBuilder().UseMathJax().Build();
+        var result = !string.IsNullOrWhiteSpace(Value) ? Markdown.ToHtml(Value,pipeline) : "";
+
+        if (!string.Equals(Output, result))
+        {
+            Output = result;
+            await OutputChanged.InvokeAsync(result);
+            _outputChanged = true;
+            StateHasChanged();
+        }
+    }
+
+}

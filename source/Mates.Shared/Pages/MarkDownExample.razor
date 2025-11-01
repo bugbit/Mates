@@ -1,0 +1,85 @@
+﻿@page "/markdownexample"
+
+<h3>MarkDownExample</h3>
+
+
+<MarkDown Value="## MarkDown Example"></MarkDown>
+<MarkDown Value="@mk1"></MarkDown>
+@code {
+    string mk1 = @"
+# Suma de dos números en formato BCD
+
+La suma se realiza **dígito a dígito de derecha a izquierda**, aplicando la regla de acarreo decimal.
+
+### Ejemplo: \( 456 + 789 \)
+
+$$
+\begin{array}{r}
+\phantom{0}456 \\
++ \,789 \\
+\hline
+\end{array}
+$$
+
+$$
+\begin{array}{r}
+\color{red}{\hphantom{0}1\hphantom{0}} \\[-4pt]
+\phantom{+}\,123 \\[-2pt]
++\,458 \\ \hline
+581
+\end{array}
+$$
+
+$$
+\begin{itemize}
+  \item First level, itemize, first item
+  \begin{itemize}
+    \item Second level, itemize, first item
+    \item Second level, itemize, second item
+    \begin{enumerate}
+      \item Third level, enumerate, first item
+      \item Third level, enumerate, second item
+    \end{enumerate}
+  \end{itemize}
+  \item First level, itemize, second item
+\end{itemize}
+$$
+
+---
+
+### Paso 1 — dígito de menor peso (unidades)
+
+$$
+6 + 9 = 15 \Rightarrow \text{acarreo } 1,\ \text{resultado parcial } 5
+$$
+
+### Paso 2 — decenas
+
+$$
+5 + 8 + 1 = 14 \Rightarrow \text{acarreo } 1,\ \text{resultado parcial } 45
+$$
+
+### Paso 3 — centenas
+
+$$
+4 + 7 + 1 = 12 \Rightarrow \text{acarreo } 1,\ \text{resultado final } 1245
+$$
+
+---
+
+### Resultado en BCD
+
+| Dígito | Valor | Binario (BCD) |
+|:-------|:-------|:--------------|
+| 1 | \(0001\) | nibble alto |
+| 2 | \(0010\) | nibble bajo |
+| 4 | \(0100\) | nibble alto |
+| 5 | \(0101\) | nibble bajo |
+
+**Buffer BCD resultante:**  
+$$
+[0x12, 0x45]
+$$
+
+";
+}
